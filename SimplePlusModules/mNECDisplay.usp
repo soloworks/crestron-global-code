@@ -1,0 +1,369 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:
+System Number:
+Programmer:
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+// #ENABLE_DYNAMIC
+// #SYMBOL_NAME ""
+// #HINT ""
+// #DEFINE_CONSTANT
+// #CATEGORY "" 
+// #PRINT_TO_TRACE
+// #DIGITAL_EXPAND 
+// #ANALOG_SERIAL_EXPAND 
+// #OUTPUT_SHIFT 
+// #HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+// #ENCODING_ASCII
+// #ENCODING_UTF16
+// #ENCODING_INHERIT_FROM_PARENT
+// #ENCODING_INHERIT_FROM_PROGRAM
+/*
+#HELP_BEGIN
+   (add additional lines of help lines)
+#HELP_END
+*/
+
+/*******************************************************************************************
+  Include Libraries
+  (Uncomment and include additional libraries as needed)
+*******************************************************************************************/
+// #CRESTRON_LIBRARY ""
+// #USER_LIBRARY ""
+
+/*******************************************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+  (Uncomment and declare inputs and outputs as needed)
+*******************************************************************************************/
+DIGITAL_INPUT test;
+DIGITAL_INPUT connect;
+DIGITAL_INPUT turnOn;
+DIGITAL_INPUT turnOff;
+DIGITAL_INPUT volumeUp;
+DIGITAL_INPUT volumeDown;
+
+// ANALOG_INPUT 
+// STRING_INPUT 
+// BUFFER_INPUT 
+
+DIGITAL_OUTPUT connected_FB;
+// ANALOG_OUTPUT 
+// STRING_OUTPUT 
+
+/*******************************************************************************************
+  SOCKETS
+  (Uncomment and define socket definitions as needed)
+*******************************************************************************************/
+TCP_CLIENT theClient[5000];
+// TCP_SERVER
+// UDP_SOCKET
+
+/*******************************************************************************************
+  Parameters
+  (Uncomment and declare parameters as needed)
+*******************************************************************************************/
+// INTEGER_PARAMETER
+// SIGNED_INTEGER_PARAMETER
+// LONG_INTEGER_PARAMETER
+// SIGNED_LONG_INTEGER_PARAMETER
+// STRING_PARAMETER
+
+/*******************************************************************************************
+  Parameter Properties
+  (Uncomment and declare parameter properties as needed)
+*******************************************************************************************/
+/*
+#BEGIN_PARAMETER_PROPERTIES parameter_variable, parameter_variable, ...
+   // propValidUnits = // unitString or unitDecimal|unitHex|unitPercent|unitCharacter|unitTime|unitTicks;
+   // propDefaultUnit = // unitString, unitDecimal, unitHex, unitPercent, unitCharacter, unitTime or unitTicks;
+   // propBounds = lower_bound , upper_bound;
+   // propDefaultValue = ;  // or, propDefaultValue = "";
+   // propList = // { "value" , "label" } , { "value" , "label" } , ... ;
+   // propShortDescription = "status_bar_hint_text";
+   // #BEGIN_PROP_FULL_DESCRIPTION  line_1...  line_2...  line_n  #END_PROP_FULL_DESCRIPTION
+   // #BEGIN_PROP_NOTES line_1...  line_2...  line_n  #END_PROP_NOTES
+#END_PARAMETER_PROPERTIES
+*/
+
+/*******************************************************************************************
+  Structure Definitions
+  (Uncomment and define structure definitions as needed)
+  Note:  Be sure to initialize all declared STRING variables as needed
+         For example, in Function Main: struct.myString = "";
+*******************************************************************************************/
+
+STRUCTURE myNECDisplay {
+	INTEGER POWER;
+
+};
+
+// MyStruct1 struct;
+
+
+// *******************************************************************************************
+  // Global Variables
+
+
+	
+//*******************************************************************************************
+INTEGER status;
+// LONG_INTEGER
+// SIGNED_INTEGER
+// SIGNED_LONG_INTEGER
+// STRING
+
+/*******************************************************************************************
+  Functions
+  (Add any additional functions here)
+  Note:  Functions must be physically placed before the location in
+         the code that calls them.
+*******************************************************************************************/
+String_Function fnBytesToString(STRING pData){	
+	STRING pRETURN[50];
+
+	STRING pTEMP[50];
+	INTEGER x;
+	INTEGER y;
+
+	
+	FOR(x = 1 TO LEN(pData)){	
+		y = Byte(pData,x);
+		MAKESTRING(pTEMP,"%02X",y);
+		pRETURN = pRETURN + PTEMP;
+	}
+
+	RETURN (pRETURN);
+}
+
+
+Function fnBuildMsg(STRING pType,STRING pMSG){
+	STRING _TOSEND[50],_HEADER[20];
+	INTEGER _CHK, _COUNT;
+	STRING pTEMP[10];
+     
+    // TRACE( "fnBuildMsg(%s,%s)", pType,pMSG);
+
+/*	IF(myNECDisplay.ID == 0){ myNECDisplay.ID = 1 }
+	IF(myNECDisplay.ID = 27){ _HEADER = "_HEADER,$2A" }		// All Monitors
+	ELSE{ _HEADER = "_HEADER,$40+myNECDisplay.ID" }	// Monitor ID  */
+    
+	pMSG = "\x02" + pMSG + "\x03";	// Add STX & ETX (Packet Delims)
+     
+	_HEADER = "0";			// Add Reserved byte
+	_HEADER = _HEADER + "A";			// Monitor ID (A=1)     
+	_HEADER = _HEADER + "0";			// Source ID
+	_HEADER = _HEADER + pType;		// Message 'Format'                              
+
+	//	get the Length of the msg, and create a two character string of this  
+	// TRACE("pMSG: %s",pMSG);
+	// TRACE("LEN:  %02X",LEN(pMSG));
+     MAKESTRING(pTEMP,"%02X",LEN(pMSG));
+	_HEADER = _HEADER + pTEMP;
+
+	_TOSEND = _HEADER + pMSG;
+                  
+	// TRACE("%s",fnBytesToString(_TOSEND));
+                   
+	FOR(_COUNT = 1 TO LEN(_TOSEND)){
+		//TRACE("Byte To XOR: %s",ITOHEX(Byte(_TOSEND,_COUNT)));
+		_CHK = _CHK ^ Byte(_TOSEND,_COUNT);
+		//TRACE("Checksum: %s", ITOHEX(_CHK));
+	}
+
+	_TOSEND = "\x01" + _TOSEND;			// Add Header Byte
+	//TRACE("%s",_TOSEND);
+	//TRACE("TESTER");
+	//TRACE("%s", CHR(_CHK));
+
+
+	_TOSEND = _TOSEND + CHR(_CHK);
+	_TOSEND = _TOSEND + "\x0D";				// Add Ending Byte
+	//fnAddToQueue(_TOSEND)
+	//	TRACE("%s",fnBytesToString(_TOSEND));
+
+	SocketSend(theClient,_TOSEND);
+
+	
+	//TRACE("%s",_TOSEND);
+
+}
+   
+Function fnSetCommand(STRING pCMD, STRING pPARAM){
+   STRING pPayLoad[30] ;
+   
+	//TRACE( "fnSetCommand(%s,%s)", pCMD,pPARAM);
+
+	pPayLoad = pCMD+pPARAM;
+	fnBuildMsg("A",pPayLoad);
+
+}
+
+Function processsFeedback(STRING feedback) {
+	// create instance of NEC display
+	 myNECDisplay state;
+
+    // if feedback is regarding power
+	if (MID(feedback, 15, 2) = "D6") {
+		// set power to on/off (1 or 4)
+		state.POWER = ATOI(MID(feedback, 17, 4));
+	}
+
+	TRACE("%i", state.POWER);
+
+
+
+}
+
+/*******************************************************************************************
+  Event Handlers
+  (Uncomment and declare additional event handlers as needed)
+*******************************************************************************************/
+/*
+PUSH input
+{here                 
+    // TODO:  Add code 
+}
+*/
+
+PUSH connect
+{
+
+status = SocketConnectClient(theClient,"192.168.1.11",7142,0);
+if(status = 0) connected_FB = 1;
+
+}
+
+PUSH turnOn{
+
+	// TRACE ("hello");
+	// 'set command' to Screen - PowerCMD & 0001= ON
+	fnSetCommand("C203D6","0001");
+}
+
+PUSH turnOff
+{
+              
+	fnSetCommand("C203D6","0004");
+}
+
+PUSH volumeUp 
+{
+
+STRING tx[120];
+tx = "\x01\x30\x41\x30\x41\x30\x43\x02\x43\x32\x30\x33\x44\x36\x30\x30\x30\x34\x03\x76\x0D";
+SocketSend(theClient,tx);
+
+
+}
+
+PUSH volumeDown
+{
+
+STRING tx[120];
+tx = "\x01\x30\x41\x30\x41\x30\x43\x02\x43\x32\x30\x33\x44\x36\x30\x30\x30\x34\x03\x76\x0D";
+SocketSend(theClient,tx);
+
+
+}
+
+/*
+RELEASE input
+{
+    // TODO:  Add code here
+}
+*/
+
+/*
+CHANGE input
+{
+    // TODO:  Add code here
+}
+*/
+
+/*
+EVENT
+{
+    // TODO:  Add code here
+}
+*/
+
+/*
+SOCKETCONNECT
+{
+    // TODO:  Add code here
+}
+*/
+
+/*
+SOCKETDISCONNECT
+{
+    // TODO:  Add code here
+}
+*/
+
+   
+SOCKETRECEIVE theClient
+{
+	if (Len(theClient.SocketRxBuf) < 256)
+        //TRACE("Rx: %s", fnBytesToString(theClient.SocketRxBuf)); 
+
+	processsFeedback(theClient.SocketRxBuf);
+
+
+	
+
+	ClearBuffer(theClient.SocketRxBuf);
+}
+   
+
+/*
+SOCKETSTATUS
+{
+    // TODO:  Add code here
+}
+*/
+
+/*******************************************************************************************
+  Main()
+  Uncomment and place one-time startup code here
+  (This code will get called when the system starts up)
+*******************************************************************************************/
+
+// connect to screen on startup
+Function initialConnect() {
+    status = SocketConnectClient(theClient,"192.168.1.11",7142,0);
+	if(status = 0) connected_FB = 1;
+
+}
+
+Function Main()
+{
+     
+	// connect to screen on startup
+	initialConnect();
+
+    // TODO:  Add code here
+    // Initialize declared global and local variables/arrays as needed.
+
+    // WaitForInitializationComplete();
+    // If you are reading any Input or Output variables, uncomment
+    //   the WaitForInitializationComplete statement above and read
+    //   them afterwards.  Input/Output variables will not have
+    //   their correct values set until after the logic processor
+    //   runs and propagates the values to them.
+}
+
+
