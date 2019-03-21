@@ -1,0 +1,353 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:
+System Number:
+Programmer:
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+// #ENABLE_DYNAMIC
+// #SYMBOL_NAME ""
+// #HINT ""
+// #DEFINE_CONSTANT
+// #CATEGORY "" 
+// #PRINT_TO_TRACE
+// #DIGITAL_EXPAND 
+// #ANALOG_SERIAL_EXPAND 
+// #OUTPUT_SHIFT 
+// #HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+// #ENCODING_ASCII
+// #ENCODING_UTF16
+// #ENCODING_INHERIT_FROM_PARENT
+// #ENCODING_INHERIT_FROM_PROGRAM
+/*
+#HELP_BEGIN
+   (add additional lines of help lines)
+#HELP_END
+*/
+
+/*******************************************************************************************
+  Include Libraries
+  (Uncomment and include additional libraries as needed)
+*******************************************************************************************/
+// #CRESTRON_LIBRARY ""
+// #USER_LIBRARY ""
+
+/*******************************************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+  (Uncomment and declare inputs and outputs as needed)
+*******************************************************************************************/
+DIGITAL_INPUT RECORD_ON;
+DIGITAL_INPUT RECORD_OFF;
+DIGITAL_INPUT _SKIP_;
+DIGITAL_INPUT STREAM_ON;
+DIGITAL_INPUT STREAM_OFF;
+DIGITAL_INPUT _SKIP_;
+DIGITAL_INPUT POLL;
+ANALOG_INPUT _SKIP_;
+ANALOG_INPUT LAYOUT;
+ANALOG_INPUT _SKIP_;
+ANALOG_INPUT CHANNEL;
+STRING_INPUT _SKIP_;
+STRING_INPUT AUTH_IP[50];
+STRING_INPUT HOST_IP[50];
+                         
+DIGITAL_OUTPUT recordActive;
+DIGITAL_OUTPUT streamActive;
+DIGITAL_OUTPUT _SKIP_;
+DIGITAL_OUTPUT pollReset;
+DIGITAL_OUTPUT connActive;
+ANALOG_OUTPUT _SKIP_;
+ANALOG_OUTPUT  layoutActive;
+
+/*******************************************************************************************
+  SOCKETS
+  (Uncomment and define socket definitions as needed)
+*******************************************************************************************/
+TCP_CLIENT ipPearl[1024];
+// TCP_SERVER
+// UDP_SOCKET
+
+/*******************************************************************************************
+  Parameters
+  (Uncomment and declare parameters as needed)
+*******************************************************************************************/
+// INTEGER_PARAMETER
+// SIGNED_INTEGER_PARAMETER
+// LONG_INTEGER_PARAMETER
+// SIGNED_LONG_INTEGER_PARAMETER
+// STRING_PARAMETER
+
+/*******************************************************************************************
+  Parameter Properties
+  (Uncomment and declare parameter properties as needed)
+*******************************************************************************************/
+/*
+#BEGIN_PARAMETER_PROPERTIES parameter_variable, parameter_variable, ...
+   // propValidUnits = // unitString or unitDecimal|unitHex|unitPercent|unitCharacter|unitTime|unitTicks;
+   // propDefaultUnit = // unitString, unitDecimal, unitHex, unitPercent, unitCharacter, unitTime or unitTicks;
+   // propBounds = lower_bound , upper_bound;
+   // propDefaultValue = ;  // or, propDefaultValue = "";
+   // propList = // { "value" , "label" } , { "value" , "label" } , ... ;
+   // propShortDescription = "status_bar_hint_text";
+   // #BEGIN_PROP_FULL_DESCRIPTION  line_1...  line_2...  line_n  #END_PROP_FULL_DESCRIPTION
+   // #BEGIN_PROP_NOTES line_1...  line_2...  line_n  #END_PROP_NOTES
+#END_PARAMETER_PROPERTIES
+*/
+
+/*******************************************************************************************
+  Structure Definitions
+  (Uncomment and define structure definitions as needed)
+  Note:  Be sure to initialize all declared STRING variables as needed
+         For example, in Function Main: struct.myString = "";
+*******************************************************************************************/
+/*
+STRUCTURE MyStruct1
+{
+};
+
+MyStruct1 struct;
+*/
+
+/*******************************************************************************************
+  Global Variables
+  (Uncomment and declare global variables as needed)
+  Note:  Be sure to initialize all declared STRING variables as needed
+         For example, in Function Main: myString = "";
+*******************************************************************************************/
+INTEGER HOST_PORT;
+// LONG_INTEGER
+// SIGN	ED_INTEGER
+// SIGNED_LONG_INTEGER
+STRING Tx[2000];
+/*******************************************************************************************
+  Functions
+  (Add any additional functions here)
+  Note:  Functions must be physically placed before the location in
+         the code that calls them.
+*******************************************************************************************/
+Integer_Function fnFindKey(STRING c, STRING k){
+	IF(FIND(k,c,1) > 0){
+		RETURN (1);
+	}
+}
+String_Function fnGetKeyValue(STRING c, STRING k){
+
+	INTEGER Pos1,Pos2;
+	// Get Key starting point
+	Pos1 = FIND(k,c,1);
+    IF(Pos1 = 0){RETURN("NOT FOUND");}
+
+	// Get Seperator Starting Point
+	Pos1 = FIND("=",c,Pos1);
+    IF(Pos1 = 0){RETURN("NOT FOUND");}
+	Pos1 = Pos1+1;
+    
+
+	WHILE(byte(c,Pos1) = 0x20 || byte(c,Pos1) = 0x7F){Pos1 = Pos1 + 1;}
+     
+	// Get End Position
+	Pos2 = FIND("\x0A",c,Pos1);
+	Pos2 = Pos2-1;
+	WHILE(byte(c,Pos2) = 0x20 || byte(c,Pos2) = 0x7F){Pos2 = Pos2 - 1;}
+     
+    // Get Length
+	Pos2 = Pos2 - Pos1 + 1;
+
+	// Return String
+    RETURN (MID(c,Pos1,Pos2));
+
+}
+
+Function fnTryConnection(){
+	INTEGER state;
+	IF(HOST_PORT = 0){HOST_PORT = 80;}
+	IF(FIND("\n\n",Tx,1)){
+		state = SOCKETCONNECTCLIENT(ipPearl, HOST_IP, 80, 0);
+	}
+	PULSE(1,pollReset);
+}
+Function fnEndConnection(){
+	INTEGER state;
+	state = SocketDisconnectClient(ipPearl);
+}
+Function fnGET(STRING path, STRING arg, STRING val){
+	
+	IF(HOST_IP != ""){   
+		MAKESTRING(Tx,"%sGET %s",Tx,path);
+	    IF(arg != ""){MAKESTRING(Tx,"%s?%s",Tx,arg);}
+		IF(val != ""){MAKESTRING(Tx,"%s=%s",Tx,val);}
+	
+		MAKESTRING(Tx,"%s HTTP/1.1\n",Tx);
+		MAKESTRING(Tx,"%sHost: %s\n",Tx,HOST_IP);
+		MAKESTRING(Tx,"%sAuthorization: Basic %s\n\n",Tx,AUTH_IP);
+	
+		fnTryConnection();
+	}
+}
+
+Function fnSetParam(STRING cmd, STRING val){
+	STRING path[500];
+	MAKESTRING(path,"/admin/channel%d/set_params.cgi",CHANNEL);
+	fnGET(path,cmd,val);
+}
+
+Function fnPoll(){
+	STRING path[500];
+	MAKESTRING(path,"/admin/channel%d/get_params.cgi?rec_enabled&publish_enabled&active_layout",CHANNEL);
+	fnGET(path,"","");	
+}
+/*******************************************************************************************
+  Event Handlers
+  (Uncomment and declare additional event handlers as needed)
+*******************************************************************************************/
+SOCKETCONNECT ipPearl{
+	STRING toSend[250];
+	//TRACE("ipPearl Connected");	
+	toSend = REMOVE("\n\n",Tx);
+    SOCKETSEND(ipPearl,toSend);
+	WAIT(250, TimeOut){SocketDisconnectClient(ipPearl);}
+}
+SOCKETDISCONNECT ipPearl{
+	STRING TEMP[100];
+	//TRACE("ipPearl DisConnected");
+	TEMP = REMOVE(" ",ipPearl.SocketRxBuf); // Strip HTTP/1.1
+	IF(REMOVE(" ",ipPearl.SocketRxBuf) = "200 "){
+		PULSE(1,connActive);
+	}
+	TEMP = REMOVE("\n\n",ipPearl.SocketRxBuf);	// Strip Headers
+    IF(fnFindKey(ipPearl.SocketRxBuf,"publish_enabled")){
+		TEMP = fnGetKeyValue(ipPearl.SocketRxBuf,"publish_enabled");
+		IF(TEMP = "on"){
+			streamActive = 1;
+		}ELSE{
+			streamActive = 0;
+		}
+	}
+    IF(fnFindKey(ipPearl.SocketRxBuf,"rec_enabled")){ 
+		TEMP = fnGetKeyValue(ipPearl.SocketRxBuf,"rec_enabled");
+		IF(TEMP = "on"){
+			recordActive = 1;
+		}ELSE{
+			recordActive = 0;
+		}
+	}
+
+    IF(fnFindKey(ipPearl.SocketRxBuf,"active_layout")){ 
+		TEMP = fnGetKeyValue(ipPearl.SocketRxBuf,"active_layout");
+		IF(layoutActive != ATOI(TEMP)){
+			layoutActive = ATOI(TEMP);
+		}
+	}
+	CLEARBUFFER(ipPearl.SocketRxBuf);
+	CancelWait(TimeOut);
+	fnTryConnection();
+}
+SOCKETRECEIVE ipPearl{
+	//TRACE("ipPearl Data Received");
+	//TRACE("%s",ipPearl.SocketRxBuf);
+}
+
+
+PUSH POLL{                 
+	fnPoll();
+}
+
+PUSH RECORD_ON{
+	fnSetParam("rec_enabled","on");
+	recordActive = 1;
+}
+
+
+PUSH RECORD_OFF{
+	fnSetParam("rec_enabled","off");
+	recordActive = 0;
+}
+
+PUSH STREAM_ON{
+	fnSetParam("publish_enabled","on");
+	streamActive = 1;
+}
+
+
+PUSH RECORD_OFF{
+	fnSetParam("publish_enabled","off");
+	streamActive = 0;
+}
+
+
+CHANGE HOST_IP{
+   	fnPoll();
+}
+
+CHANGE LAYOUT{
+	fnSetParam("active_layout",ITOA(LAYOUT));
+	layoutActive = LAYOUT;
+}
+
+/*
+EVENT
+{
+    // TODO:  Add code here
+}
+*/
+
+/*
+SOCKETCONNECT
+{
+    // TODO:  Add code here
+}
+*/
+
+/*
+SOCKETDISCONNECT
+{
+    // TODO:  Add code here
+}
+*/
+
+/*
+SOCKETRECEIVE
+{
+    // TODO:  Add code here
+}
+*/
+
+/*
+SOCKETSTATUS
+{
+    // TODO:  Add code here
+}
+*/
+
+/*******************************************************************************************
+  Main()
+  Uncomment and place one-time startup code here
+  (This code will get called when the system starts up)
+*******************************************************************************************/
+
+Function Main()
+{
+    // TODO:  Add code here
+    // Initialize declared global and local variables/arrays as needed.
+
+    WaitForInitializationComplete();
+    // If you are reading any Input or Output variables, uncomment
+    //   the WaitForInitializationComplete statement above and read
+    //   them afterwards.  Input/Output variables will not have
+    //   their correct values set until after the logic processor
+    //   runs and propagates the values to them.
+}
+
+
