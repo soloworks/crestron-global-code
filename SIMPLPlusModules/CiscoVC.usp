@@ -57,6 +57,7 @@ BUFFER_INPUT _SKIP_;
 BUFFER_INPUT Rx[2000];
 
 DIGITAL_OUTPUT WAKE_FB;
+DIGITAL_OUTPUT SLEEP_FB;
 STRING_OUTPUT _SKIP_;
 STRING_OUTPUT UI_EVENT_PRESSED;
 STRING_OUTPUT UI_EVENT_RELEASED;
@@ -148,6 +149,7 @@ Function fnInitComms(){
 *******************************************************************************************/
 PUSH InitComms{
 	Tx = "xfeedback register /event/userinterface/extensions/event\n";
+	Tx = "xfeedback register /Status/Standby\n";
 }
 
 CHANGE Rx{
@@ -223,7 +225,31 @@ CHANGE Rx{
     }
     ELSE IF(chunk = "*r"){
       TRACE("%s","Result Feedback");
-    }	
+    }
+	ELSE IF(chunk = "*s"){
+	  fnDebug("FB","Status");
+      Chunk = REMOVE(" ",Line);
+      Chunk = LEFT(Chunk,LEN(Chunk)-1);
+      IF(chunk = "Standby"){
+        fnDebug("FB","Standby");
+        Chunk = REMOVE(" ",Line);
+        Chunk = LEFT(Chunk,LEN(Chunk)-1);
+		IF(chunk = "State:"){
+        fnDebug("FB","State:");
+
+        IF(chunk = "Off"){
+          fnDebug("FB","Off");
+          WAKE_FB  = 0;
+		  SLEEP_FB = 1;
+		}
+        IF(chunk = "Standby"){
+          fnDebug("FB","Standby");
+          WAKE_FB  = 1;
+		  SLEEP_FB = 0;      
+		  }
+		}
+      }
+	}		
   }
 
 	//*e UserInterface Extensions Event Clicked Signal: "ProjectorPowerOn"\x0D\x0A
