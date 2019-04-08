@@ -1,0 +1,175 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:   Solo Works London
+System Name:   Internal Modules
+System Number: 
+Programmer:    Sam Shelton
+Comments: Handles communication with Cisco VC units on firmware 9.5+
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+// #ENABLE_DYNAMIC
+#SYMBOL_NAME "Cisco VC Core Control"
+#HINT "Handles communication with Cisco VC units on firmware 9.5+"
+// #DEFINE_CONSTANT
+// #CATEGORY "Video Conferencing" 
+// #PRINT_TO_TRACE
+// #DIGITAL_EXPAND 
+// #ANALOG_SERIAL_EXPAND 
+// #OUTPUT_SHIFT 
+// #HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+// #ENCODING_ASCII
+// #ENCODING_UTF16
+// #ENCODING_INHERIT_FROM_PARENT
+// #ENCODING_INHERIT_FROM_PROGRAM
+/*
+#HELP_BEGIN
+   (add additional lines of help lines)
+#HELP_END
+*/
+
+/*******************************************************************************************
+  Include Libraries
+  (Uncomment and include additional libraries as needed)
+*******************************************************************************************/
+// #CRESTRON_LIBRARY ""
+// #USER_LIBRARY ""
+
+/*******************************************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+  (Uncomment and declare inputs and outputs as needed)
+*******************************************************************************************/
+DIGITAL_INPUT Init,Debug;
+DIGITAL_INPUT _SKIP_;
+DIGITAL_INPUT WAKE;
+DIGITAL_INPUT SLEEP;
+BUFFER_INPUT  _SKIP_;
+STRING_INPUT  ModuleTx[500];
+BUFFER_INPUT  DeviceRx[2000];
+
+DIGITAL_OUTPUT InitNext;
+DIGITAL_OUTPUT _SKIP_,_SKIP_;
+DIGITAL_OUTPUT WAKE_FB;
+DIGITAL_OUTPUT SLEEP_FB;
+STRING_OUTPUT _SKIP_;
+STRING_OUTPUT ModuleRx;
+STRING_OUTPUT DeviceTx;
+
+
+/*******************************************************************************************
+  Functions
+  (Add any additional functions here)
+  Note:  Functions must be physically placed before the location in
+         the code that calls them.
+*******************************************************************************************/
+Function fnDebug(STRING msg, STRING detail){
+  IF(Debug = 1){
+    TRACE("CiscoSX: [%s] [%s]",msg,detail);
+  }
+}
+
+INTEGER x;
+STRING MSG[200];
+Function fnRegister(){
+  // Restart Wait process
+  WAIT(200,waitInit){
+    // Turn off echo
+	  DeviceTx = "echo off\n";
+    delay(10); 
+    // Register for Standby Events
+	  DeviceTx = "xfeedback register /Status/Standby\n";
+    delay(10);
+    // Trigger next in process
+    pulse(1, InitNext);
+  }
+}
+
+Function fnInitComms(){
+  // Cancel current Wait if live
+  CancelWait(waitInit);
+  fnRegister();
+}
+
+/*******************************************************************************************
+  Event Handlers
+  (Uncomment and declare additional event handlers as needed)
+*******************************************************************************************/
+PUSH Init{
+  fnInitComms();
+}
+
+CHANGE ModuleTx{
+  DeviceTx = ModuleTx + "\n";
+}
+
+CHANGE DeviceRx{
+	STRING Line[250];
+	STRING Chunk[250];
+  fnDebug("VC->",DeviceRx);
+
+  WHILE(FIND("\n",DeviceRx)>0){
+    Line = REMOVE("\n",DeviceRx);
+    Line = LEFT(Line,LEN(Line)-2);  // Remove \n
+    // Send out to other modules for processing
+    ModuleRx = Line;
+    Chunk = REMOVE(" ",Line);
+    Chunk = LEFT(Chunk,LEN(Chunk)-1); // Remove Space
+    fnDebug("Chunk",Chunk);
+    IF(Chunk = "**"){
+      fnDebug("FB","Misc");
+    }
+    ELSE IF(Chunk = "*e"){
+      
+    }
+    ELSE IF(chunk = "*r"){
+      
+    }
+    ELSE IF(chunk = "*s"){
+      fnDebug("FB","Status");
+        Chunk = REMOVE(" ",Line);
+        Chunk = LEFT(Chunk,LEN(Chunk)-1);
+        IF(chunk = "Standby"){
+          fnDebug("FB","Standby");
+          Chunk = REMOVE(" ",Line);
+          Chunk = LEFT(Chunk,LEN(Chunk)-1);
+          IF(chunk = "State:"){
+            fnDebug("FB","State:");
+            IF(Line = "Off"){
+              fnDebug("FB","Off");
+              WAKE_FB  = 1;
+              SLEEP_FB = 0;
+            }
+            IF(Line = "Standby"){
+              fnDebug("FB","Standby");
+              WAKE_FB  = 0;
+              SLEEP_FB = 1;      
+          }
+        }
+      }
+	  }		
+  }
+}
+
+push WAKE{
+   DeviceTx = "xCommand Standby Deactivate\n";
+}
+
+push SLEEP{
+   DeviceTx = "xCommand Standby Activate\n";
+}
+
+/*******************************************************************************************
+  Main()
+  Uncomment and place one-time startup code here
+  (This code will get called when the system starts up)
+*******************************************************************************************/
+

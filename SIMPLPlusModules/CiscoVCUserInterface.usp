@@ -15,7 +15,7 @@ Comments: Handles communication with Cisco VC units on firmware 9.5+
   (Uncomment and declare compiler directives as needed)
 *******************************************************************************************/
 // #ENABLE_DYNAMIC
-#SYMBOL_NAME "Cisco VC Control Module"
+#SYMBOL_NAME "Cisco VC Touch10 UserInterface"
 #HINT "Handles communication with Cisco VC units on firmware 9.5+"
 // #DEFINE_CONSTANT
 // #CATEGORY "Video Conferencing" 
@@ -48,23 +48,18 @@ Comments: Handles communication with Cisco VC units on firmware 9.5+
   DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
   (Uncomment and declare inputs and outputs as needed)
 *******************************************************************************************/
-DIGITAL_INPUT Debug;
-DIGITAL_INPUT InitComms;
-DIGITAL_INPUT _SKIP_;
-DIGITAL_INPUT WAKE;
-DIGITAL_INPUT SLEEP; 
-BUFFER_INPUT _SKIP_;
-BUFFER_INPUT Rx[2000];
+DIGITAL_INPUT Init,Debug;
+STRING_INPUT  _SKIP_, _SKIP_, _SKIP_, _SKIP_, _SKIP_, _SKIP_;
+STRING_INPUT  ModuleRx[2000];
 
-DIGITAL_OUTPUT WAKE_FB;
-DIGITAL_OUTPUT SLEEP_FB;
-STRING_OUTPUT _SKIP_;
+DIGITAL_OUTPUT InitNext;
+STRING_OUTPUT _SKIP_,_SKIP_;
 STRING_OUTPUT UI_EVENT_PRESSED;
 STRING_OUTPUT UI_EVENT_RELEASED;
 STRING_OUTPUT UI_EVENT_CLICK;
 STRING_OUTPUT UI_EVENT_CHANGED;
 STRING_OUTPUT _SKIP_;
-STRING_OUTPUT Tx;
+STRING_OUTPUT ModuleTx;
 
 
 /*******************************************************************************************
@@ -79,28 +74,11 @@ STRING_OUTPUT Tx;
   Parameters
   (Uncomment and declare parameters as needed)
 *******************************************************************************************/
-// INTEGER_PARAMETER
-// SIGNED_INTEGER_PARAMETER
-// LONG_INTEGER_PARAMETER
-// SIGNED_LONG_INTEGER_PARAMETER
-// STRING_PARAMETER
 
 /*******************************************************************************************
   Parameter Properties
   (Uncomment and declare parameter properties as needed)
 *******************************************************************************************/
-/*
-#BEGIN_PARAMETER_PROPERTIES parameter_variable, parameter_variable, ...
-   // propValidUnits = // unitString or unitDecimal|unitHex|unitPercent|unitCharacter|unitTime|unitTicks;
-   // propDefaultUnit = // unitString, unitDecimal, unitHex, unitPercent, unitCharacter, unitTime or unitTicks;
-   // propBounds = lower_bound , upper_bound;
-   // propDefaultValue = ;  // or, propDefaultValue = "";
-   // propList = // { "value" , "label" } , { "value" , "label" } , ... ;
-   // propShortDescription = "status_bar_hint_text";
-   // #BEGIN_PROP_FULL_DESCRIPTION  line_1...  line_2...  line_n  #END_PROP_FULL_DESCRIPTION
-   // #BEGIN_PROP_NOTES line_1...  line_2...  line_n  #END_PROP_NOTES
-#END_PARAMETER_PROPERTIES
-*/
 
 /*******************************************************************************************
   Structure Definitions
@@ -108,13 +86,7 @@ STRING_OUTPUT Tx;
   Note:  Be sure to initialize all declared STRING variables as needed
          For example, in Function Main: struct.myString = "";
 *******************************************************************************************/
-/*
-STRUCTURE MyStruct1
-{
-};
 
-MyStruct1 struct;
-*/
 
 /*******************************************************************************************
   Global Variables
@@ -126,7 +98,7 @@ MyStruct1 struct;
 // LONG_INTEGER
 // SIGNED_INTEGER
 // SIGNED_LONG_INTEGER
-// STRING
+// STRING SOURCE_NAME_INT[10][20];
 /*******************************************************************************************
   Functions
   (Add any additional functions here)
@@ -134,163 +106,110 @@ MyStruct1 struct;
          the code that calls them.
 *******************************************************************************************/
 Function fnDebug(STRING msg, STRING detail){
+  IF(Debug = 1){
     TRACE("CiscoSX: [%s] [%s]",msg,detail);
+  }
+}
+
+Function fnRegister(){
+  // Restart Wait process
+  WAIT(200,waitInit){
+    // Register for UserInterface Events
+	  ModuleTx = "xfeedback register /Event/UserInterface"; 
+    delay(10);
+    // Trigger next in process
+    pulse(1, InitNext);
+  }
 }
 
 Function fnInitComms(){
-  WAIT(200,waitInit){
-    Tx = "xfeedback register /event/userinterface/extensions/event\n";
-  }
+  // Cancel current Wait if live
+  CancelWait(waitInit);
+  fnRegister();
 }
 
 /*******************************************************************************************
   Event Handlers
   (Uncomment and declare additional event handlers as needed)
 *******************************************************************************************/
-PUSH InitComms{
-	Tx = "xfeedback register /event/userinterface/extensions/event\n";
-	Tx = "xfeedback register /Status/Standby\n";
+PUSH Init{
+  fnInitComms();
 }
 
-CHANGE Rx{
+CHANGE ModuleRx{
 	STRING Line[250];
 	STRING Chunk[250];
-  TRACE("[%s]",Rx);
-
-  WHILE(FIND("\n",Rx)>0){
-    Line = REMOVE("\n",Rx);
-    Line = LEFT(Line,LEN(Line)-2);  // Remove \n
-    fnDebug("Line",Line);
+  Line = ModuleRx;
+  fnDebug("Line",Line);
+  Chunk = REMOVE(" ",Line);
+  Chunk = LEFT(Chunk,LEN(Chunk)-1); // Remove Space
+  fnDebug("Chunk",Chunk);
+  IF(Chunk = "**"){
+    fnDebug("FB","Misc");
+  }
+  ELSE IF(Chunk = "*e"){
+    fnDebug("FB","Event");
     Chunk = REMOVE(" ",Line);
-    Chunk = LEFT(Chunk,LEN(Chunk)-1); // Remove Space
-    fnDebug("Chunk",Chunk);
-    IF(Chunk = "**"){
-      fnDebug("FB","Misc");
-    }
-    ELSE IF(Chunk = "*e"){
-      fnDebug("FB","Event");
+    Chunk = LEFT(Chunk,LEN(Chunk)-1);
+    IF(chunk = "UserInterface"){
+      fnDebug("FB","UserInterface");
       Chunk = REMOVE(" ",Line);
       Chunk = LEFT(Chunk,LEN(Chunk)-1);
-      IF(chunk = "UserInterface"){
-        fnDebug("FB","UserInterface");
+      IF(chunk = "Extensions"){
+        fnDebug("FB","Extensions");
         Chunk = REMOVE(" ",Line);
         Chunk = LEFT(Chunk,LEN(Chunk)-1);
-        IF(chunk = "Extensions"){
-          fnDebug("FB","Extensions");
+        IF(chunk = "Event"){
+          fnDebug("FB","Event");
           Chunk = REMOVE(" ",Line);
           Chunk = LEFT(Chunk,LEN(Chunk)-1);
-          IF(chunk = "Event"){
-            fnDebug("FB","Event");
+          IF(chunk = "Clicked"){
+            fnDebug("FB","Clicked");
             Chunk = REMOVE(" ",Line);
             Chunk = LEFT(Chunk,LEN(Chunk)-1);
-            IF(chunk = "Clicked"){
-              fnDebug("FB","Clicked");
-              Chunk = REMOVE(" ",Line);
-              Chunk = LEFT(Chunk,LEN(Chunk)-1);
-              IF(chunk = "Signal:"){
-                fnDebug("FB","Signal");
-                UI_EVENT_CLICK = Line;
-              }
+            IF(chunk = "Signal:"){
+              fnDebug("FB","Signal");
+              UI_EVENT_CLICK = Line;
             }
-            ELSE IF(chunk = "Pressed"){
-              fnDebug("FB","Pressed");
-              Chunk = REMOVE(" ",Line);
-              Chunk = LEFT(Chunk,LEN(Chunk)-1);
-              IF(chunk = "Signal:"){
-                fnDebug("FB","Signal");
-                UI_EVENT_PRESSED = Line;
-              }
+          }
+          ELSE IF(chunk = "Pressed"){
+            fnDebug("FB","Pressed");
+            Chunk = REMOVE(" ",Line);
+            Chunk = LEFT(Chunk,LEN(Chunk)-1);
+            IF(chunk = "Signal:"){
+              fnDebug("FB","Signal");
+              UI_EVENT_PRESSED = Line;
             }
-            ELSE IF(chunk = "Released"){
-              fnDebug("FB","Released");
-              Chunk = REMOVE(" ",Line);
-              Chunk = LEFT(Chunk,LEN(Chunk)-1);
-              IF(chunk = "Signal:"){
-                fnDebug("FB","Signal");
-                UI_EVENT_RELEASED = Line;
-              }
+          }
+          ELSE IF(chunk = "Released"){
+            fnDebug("FB","Released");
+            Chunk = REMOVE(" ",Line);
+            Chunk = LEFT(Chunk,LEN(Chunk)-1);
+            IF(chunk = "Signal:"){
+              fnDebug("FB","Signal");
+              UI_EVENT_RELEASED = Line;
             }
-            ELSE IF(chunk = "Changed"){
-              fnDebug("FB","Released");
-              Chunk = REMOVE(" ",Line);
-              Chunk = LEFT(Chunk,LEN(Chunk)-1);
-              IF(chunk = "Signal:"){
-                fnDebug("FB","Signal");
-                UI_EVENT_CHANGED = Line;
-              }
+          }
+          ELSE IF(chunk = "Changed"){
+            fnDebug("FB","Released");
+            Chunk = REMOVE(" ",Line);
+            Chunk = LEFT(Chunk,LEN(Chunk)-1);
+            IF(chunk = "Signal:"){
+              fnDebug("FB","Signal");
+              UI_EVENT_CHANGED = Line;
             }
           }
         }
       }
     }
-    ELSE IF(chunk = "*r"){
-      TRACE("%s","Result Feedback");
-    }
-	ELSE IF(chunk = "*s"){
-	  fnDebug("FB","Status");
-      Chunk = REMOVE(" ",Line);
-      Chunk = LEFT(Chunk,LEN(Chunk)-1);
-      IF(chunk = "Standby"){
-        fnDebug("FB","Standby");
-        Chunk = REMOVE(" ",Line);
-        Chunk = LEFT(Chunk,LEN(Chunk)-1);
-		IF(chunk = "State:"){
-        fnDebug("FB","State:");
-
-        IF(chunk = "Off"){
-          fnDebug("FB","Off");
-          WAKE_FB  = 0;
-		  SLEEP_FB = 1;
-		}
-        IF(chunk = "Standby"){
-          fnDebug("FB","Standby");
-          WAKE_FB  = 1;
-		  SLEEP_FB = 0;      
-		  }
-		}
-      }
-	}		
   }
-
-	//*e UserInterface Extensions Event Clicked Signal: "ProjectorPowerOn"\x0D\x0A
-	//*e UserInterface Extensions Event Clicked Signal: "ProjectorPowerOff"\x0D\x0A
+  ELSE IF(chunk = "*r"){
+    
+  }
+  ELSE IF(chunk = "*s"){
+    
+  }
 }
-
-
-/*
-EVENT
-{
-    // TODO:  Add code here
-}
-*/
-
-/*
-SOCKETCONNECT
-{
-    // TODO:  Add code here
-}
-*/
-
-/*
-SOCKETDISCONNECT
-{
-    // TODO:  Add code here
-}
-*/
-
-/*
-SOCKETRECEIVE
-{
-    // TODO:  Add code here
-}
-*/
-
-/*
-SOCKETSTATUS
-{
-    // TODO:  Add code here
-}
-*/
 
 /*******************************************************************************************
   Main()
