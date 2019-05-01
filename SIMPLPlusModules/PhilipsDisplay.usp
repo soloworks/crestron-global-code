@@ -42,19 +42,24 @@ Comments:      Simple module for control of Philips Commercial Display
   (Uncomment and declare inputs and outputs as needed)
 *******************************************************************************************/
 DIGITAL_INPUT Debug;
+DIGITAL_INPUT Init;
 DIGITAL_INPUT _SKIP_;
 DIGITAL_INPUT POWER_ON;
 DIGITAL_INPUT POWER_OFF;
+DIGITAL_INPUT _SKIP_;
+STRING_INPUT  DeviceRx[2000];
 
 DIGITAL_OUTPUT COMMS_ACTIVE;
 DIGITAL_OUTPUT _SKIP_;
 DIGITAL_OUTPUT POWER;
+DIGITAL_OUTPUT _SKIP_;
+STRING_OUTPUT DeviceTx;
 
 /*******************************************************************************************
   SOCKETS
   (Uncomment and define socket definitions as needed)
 *******************************************************************************************/
-TCP_CLIENT ipSocket[500];
+// TCP_CLIENT ipSocket[500];
 // TCP_SERVER
 // UDP_SOCKET
 
@@ -91,10 +96,7 @@ TCP_CLIENT ipSocket[500];
   Note:  Be sure to initialize all declared STRING variables as needed
          For example, in Function Main: struct.myString = "";
 *******************************************************************************************/
-STRUCTURE myPhilipsDisplay {
-  INTEGER CONN_STATE;
-	INTEGER POWER;
-};
+
 
 /*******************************************************************************************
   Global Variables
@@ -114,78 +116,82 @@ Function fnDebug(STRING msg, STRING detail){
     TRACE("Philips: [%s] [%s]",msg,detail);
   }
 }
+
+Function fnPoll(){
+    // Power State
+    DeviceTx = "\x05\x01\x00\x19\x1D";// Brodcast ID
+    //DeviceTx = "\x05\x01\x01\x19\x1C";// ID 01
+    // Power State
+    delay(10);
+    //DeviceTx = "\x05\x01\x01\x19\x1E";
+}
+Function fnDelayPoll(){
+  // Restart Wait process
+  WAIT(10000,pollWait){
+    fnPoll();
+    // Cancel current Wait if live
+   fnDelayPoll();
+  }
+}
+
+
+Function fnInitPoll(){
+  CancelWait(pollWait);
+  fnDelayPoll();
+}
+
+Function fnInitComms(){
+  WAIT(30000,commsWait){
+    COMMS_ACTIVE = 0;
+  }
+}
 /*******************************************************************************************
   Event Handlers
   (Uncomment and declare additional event handlers as needed)
 *******************************************************************************************/
-PUSH POWER_ON{
-  SOCKETSEND(ipSocket, "\x06\x01\x00\x18\x02\x1F");
-}
-
 PUSH POWER_OFF{
-  SOCKETSEND(ipSocket, "\x06\x01\x00\x18\x01\x1E");
+  DeviceTx = "\x06\x01\x00\x18\x01\x1E";
+  fnInitPoll();
 }
 
-SOCKETCONNECT ipSocket{
-	myPhilipsDisplay.CONN_STATE = 1;
+PUSH POWER_ON{
+  DeviceTx = "\x06\x01\x00\x18\x02\x1D";
+  fnInitPoll();
 }
 
-SOCKETDISCONNECT ipSocket{
- 	myPhilipsDisplay.CONN_STATE = 0;
+PUSH Init{
+ fnPoll();
+ fnInitPoll();
 }
 
-/*
-EVENT
-{
-    // TODO:  Add code here
-}
-*/
+CHANGE DeviceRx{
+  COMMS_ACTIVE = 1;
+  CancelWait(commsWait);
+  fnInitComms();
 
-/*
-SOCKETCONNECT
-{
-    // TODO:  Add code here
-}
-*/
+  IF(DeviceRx = "\x06\x01\x01\x19\x02\x1D"){
+    POWER = 1;
+    IF(POWER_OFF = 1){
+      DeviceTx = "\x06\x01\x00\x18\x01\x1E";
+    }
+  }
 
-/*
-SOCKETDISCONNECT
-{
-    // TODO:  Add code here
+  IF(DeviceRx = "\x06\x01\x01\x19\x01\x1E"){
+    POWER = 0;
+    IF(POWER_ON = 1){ 
+      DeviceTx = "\x06\x01\x00\x18\x02\x1D";
+    }
+  }
 }
-*/
 
-/*
-SOCKETRECEIVE
-{
-    // TODO:  Add code here
-}
-*/
-
-/*
-SOCKETSTATUS
-{
-    // TODO:  Add code here
-}
-*/
 
 /*******************************************************************************************
   Main()
   Uncomment and place one-time startup code here
   (This code will get called when the system starts up)
 *******************************************************************************************/
-/*
-Function Main()
-{
-    // TODO:  Add code here
-    // Initialize declared global and local variables/arrays as needed.
-
-    // WaitForInitializationComplete();
-    // If you are reading any Input or Output variables, uncomment
-    //   the WaitForInitializationComplete statement above and read
-    //   them afterwards.  Input/Output variables will not have
-    //   their correct values set until after the logic processor
-    //   runs and propagates the values to them.
+Function Main(){
+  
 }
-*/
+
 
