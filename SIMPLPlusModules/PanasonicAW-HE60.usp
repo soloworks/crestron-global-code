@@ -17,7 +17,6 @@ Comments:
 // #ENABLE_DYNAMIC
 // #SYMBOL_NAME ""
 // #HINT ""
-#DEFINE_CONSTANT HOLDTIME 100
 // #CATEGORY "" 
 // #PRINT_TO_TRACE
 // #DIGITAL_EXPAND 
@@ -52,7 +51,8 @@ DIGITAL_INPUT POLL;
 DIGITAL_INPUT _SKIP_, Power_On, Power_Off;
 DIGITAL_INPUT _SKIP_, Move_Up, Move_Down, Move_Left, Move_Right;
 DIGITAL_INPUT _SKIP_, Zoom_In, Zoom_Out, _SKIP_, Focus_Far, Focus_Near;
-DIGITAL_INPUT _SKIP_, Preset[4];
+DIGITAL_INPUT _SKIP_, PresetRecall[4];
+DIGITAL_INPUT _SKIP_, PresetSave[4];
 // ANALOG_INPUT
 STRING_INPUT _SKIP_; 
 STRING_INPUT AUTH_IP[50]; 
@@ -120,7 +120,6 @@ MyStruct1 struct;
   Note:  Be sure to initialize all declared STRING variables as needed
          For example, in Function Main: myString = "";
 *******************************************************************************************/
-INTEGER long, pushedPreset;
 // LONG_INTEGER
 // SIGNED_INTEGER
 // SIGNED_LONG_INTEGER
@@ -262,42 +261,15 @@ RELEASE Focus_Near
 	Send("#F50");
 }
 
-PUSH Preset
-{        
-	pushedPreset = GetLastModifiedArrayIndex();
-
-	Preset_Fb[pushedPreset] = 1;
-	
-	Long = 0;
-	wait (HOLDTIME, waiter)
-	{            
-		Long = 1; 
-		Preset_Fb[pushedPreset] = 0;
-		delay(20);
-		Preset_Fb[pushedPreset] = 1;
-	}
+RELEASE PresetRecall{              
+	STRING command[5];                    
+	MAKESTRING(command,"#R%02d",GetLastModifiedArrayIndex()-1);	 
+	Send(command);
 }
 
-RELEASE Preset
-{              
-	INTEGER x;
-	STRING command[5];     
-	
-	cancelWait(waiter);
-	
-	x= GetLastModifiedArrayIndex();
-	Preset_Fb[x] = 0;
-	
-	if (Long)
-	{
-		MAKESTRING(command,"#M%02d",x-1);	
-  
-	}
-	else
-	{                      
-		MAKESTRING(command,"#R%02d",x-1);	
-
-	}       
+RELEASE PresetSave{              
+	STRING command[5];                    
+	MAKESTRING(command,"#M%02d",GetLastModifiedArrayIndex()-1);	 
 	Send(command);
 }
 
