@@ -4,8 +4,8 @@
 # https://aka.ms/yaml
 
 trigger:
-- master
 - develop
+- master
 
 pool:
   name: 'Default'
