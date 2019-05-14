@@ -3,19 +3,19 @@
 # Add steps that build, run tests, deploy, and more:
 # https://aka.ms/yaml
 
-
-job: Compile Repo
-timeoutInMinutes: 15
-
 trigger:
 - develop
 - master
 
-pool:
-  name: 'Default'
+jobs:
+- job: Compile Repo
+  timeoutInMinutes: 15
 
-steps:
-- task: PowerShell@2
-  displayName: 'Compiling Modules'
-  inputs:
-    filePath: '.\compileAll.ps1'
+  pool:
+    name: 'Default'
+
+  steps:
+  - task: PowerShell@2
+    displayName: 'Compiling Modules'
+    inputs:
+      filePath: '.\compileAll.ps1'
