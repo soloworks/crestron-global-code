@@ -10,7 +10,7 @@ $SPlusCC = "C:\Program Files (x86)\Crestron\Simpl\SPlusCC.exe"
 Get-ChildItem (Resolve-Path -Path ".\SIMPLPlusModules\").Path -Filter *.usp | 
 Foreach-Object {
     Write-Host -NoNewline "Found Module `"$($_.Name)`"..."
-    $pinfo = New-Object System.Diagdnostics.ProcessStartInfo
+    $pinfo = New-Object System.Diagnostics.ProcessStartInfo
     $pinfo.FileName = $SPlusCC
     $pinfo.RedirectStandardError = $true
     $pinfo.RedirectStandardOutput = $true
