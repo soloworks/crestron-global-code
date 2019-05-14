@@ -11,8 +11,7 @@ pool:
   name: 'Default'
 
 steps:
-- powershell: .\compileAll.ps1
+- task: PowerShell@2
   displayName: 'Compiling Modules'
-
-- script: echo 'ZipUp Here'
-  displayName: 'Packing up the project'
+  inputs:
+    filePath: '.\compileAll.ps1'
