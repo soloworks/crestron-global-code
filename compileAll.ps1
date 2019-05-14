@@ -2,7 +2,7 @@
 # Example:
 # "C:\Program Files (x86)\Crestron\Simpl\SPlusCC.exe" \rebuild "c:\Users\samsh\OneDrive\Documents\GitHub\crestron-global-code\SIMPLPlusModules\CiscoVCCore.usp"  \target series2 series3
 #
-
+Write-Host "Starting Compiler Script"
 # Set Compiler Path
 $SPlusCC = "C:\Program Files (x86)\Crestron\Simpl\SPlusCC.exe"
 
@@ -22,7 +22,7 @@ Foreach-Object {
     $p.Start() | Out-Null
     $p.WaitForExit()
     
-    $stdout = $p.StandardOutput.ReadToEnd()
+    #$stdout = $p.StandardOutput.ReadToEnd()
     $stderr = $p.StandardError.ReadToEnd()
 
     if($p.ExitCode -eq 0){
