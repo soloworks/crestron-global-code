@@ -7,6 +7,9 @@ trigger:
 - develop
 - master
 
+job: Compile Repo
+timeoutInMinutes: 15
+
 pool:
   name: 'Default'
 
