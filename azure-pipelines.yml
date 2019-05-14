@@ -8,7 +8,7 @@ trigger:
 - master
 
 jobs:
-- job: Compile Repo
+- job: Compile_Repo
   timeoutInMinutes: 15
 
   pool:
