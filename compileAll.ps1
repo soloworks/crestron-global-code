@@ -9,16 +9,29 @@ $SPlusCC = "C:\Program Files (x86)\Crestron\Simpl\SPlusCC.exe"
 # Loop through all .usp files in modules folder
 Get-ChildItem (Resolve-Path -Path ".\SIMPLPlusModules\").Path -Filter *Pearl.usp | 
 Foreach-Object {
-    $Arguments = New-Object System.Collections.ArrayList
-    $Arguments.Add("\rebuild `"$($_.FullName)`"") > $null
-    $Arguments.Add("\target series2 series3") > $null
+    $pinfo = New-Object System.Diagnostics.ProcessStartInfo
+    $pinfo.FileName = $SPlusCC
+    $pinfo.RedirectStandardError = $true
+    $pinfo.RedirectStandardOutput = $true
+    $pinfo.UseShellExecute = $false
+    $pinfo.Arguments = "\rebuild `"$($_.FullName)`" \target series2 series3"
+    $p = New-Object System.Diagnostics.Process
+    $p.StartInfo = $pinfo
+
     Write-Host -NoNewline "Compiling $($_.Name)..."
-    $Process = Start-Process -FilePath $SPlusCC -ArgumentList $Arguments -Wait -PassThru
-    if($Process.ExitCode -eq 0){
-        $Duration = New-TimeSpan -Start $Process.StartTime -End $Process.ExitTime
+    $p.Start() | Out-Null
+    $p.WaitForExit()
+    
+    $stdout = $p.StandardOutput.ReadToEnd()
+    $stderr = $p.StandardError.ReadToEnd()
+
+    if($p.ExitCode -eq 0){
+        $Duration = New-TimeSpan -Start $p.StartTime -End $p.ExitTime
         Write-Host "Success ($($Duration.Seconds)s)"
+        #Write-Host "stdout: $stdout"
     }else{
-        Write-Host "Error"
+        Write-Host "Error (ExitCode:$($p.ExitCode))"
+        Write-Host "stderr: $stderr"
         Exit 1
     }
 }
