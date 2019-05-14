@@ -9,22 +9,19 @@ $SPlusCC = "C:\Program Files (x86)\Crestron\Simpl\SPlusCC.exe"
 # Loop through all .usp files in modules folder
 Get-ChildItem (Resolve-Path -Path ".\SIMPLPlusModules\").Path -Filter *.usp | 
 Foreach-Object {
-    Write-Host "Found `"$($_.Name)`"..."
-    $pinfo = New-Object System.Diagnostics.ProcessStartInfo
-    Write-Host -NoNewline "1..."
+    Write-Host -NoNewline "Found Module `"$($_.Name)`"..."
+    $pinfo = New-Object System.Diagdnostics.ProcessStartInfo
     $pinfo.FileName = $SPlusCC
     $pinfo.RedirectStandardError = $true
     $pinfo.RedirectStandardOutput = $true
     $pinfo.UseShellExecute = $false
     $pinfo.Arguments = "\rebuild `"$($_.FullName)`" \target series2 series3"
     $p = New-Object System.Diagnostics.Process
-    Write-Host -NoNewline "2..."
     $p.StartInfo = $pinfo
 
     Write-Host -NoNewline "Compiling..."
     $p.Start() | Out-Null
     $p.WaitForExit()
-    Write-Host -NoNewline "Finished..."
     
     #$stdout = $p.StandardOutput.ReadToEnd()
     $stderr = $p.StandardError.ReadToEnd()
