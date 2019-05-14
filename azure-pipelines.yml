@@ -11,7 +11,7 @@ pool:
   name: 'Default'
 
 steps:
-- script: compileAll.ps1
+- powershell: .\compileAll.ps1
   displayName: 'Compiling Modules'
 
 - script: echo 'ZipUp Here'
