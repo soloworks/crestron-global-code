@@ -10,7 +10,8 @@ trigger:
 jobs:
 - job: Compile_Repo
   timeoutInMinutes: 15
-
+  workspace:
+      clean: all
   pool:
     name: 'Default'
 
