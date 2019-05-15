@@ -11,7 +11,7 @@ jobs:
 - job: Compile_Repo
   timeoutInMinutes: 15
   workspace:
-      clean: all
+    clean: all
   pool:
     name: 'Default'
 
