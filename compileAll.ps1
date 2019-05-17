@@ -21,12 +21,14 @@ Foreach-Object {
     $p = New-Object System.Diagnostics.Process
     $p.StartInfo = $pinfo
 
-    Write-Host "Calling Compiler:"
+    Write-Host "Compiling:"
     Write-Host "EXE: $($SPlusCC)"
     Write-Host "ARG: $($pinfo.Arguments)"
+    Write-Host "1..."
     $p.Start()# | Out-Null
-    Write-Host "Waiting for Exit"
+    Write-Host "2..."
     $p.WaitForExit()
+    Write-Host "3"
     
     $stdout = $p.StandardOutput.ReadToEnd()
     $stderr = $p.StandardError.ReadToEnd()
