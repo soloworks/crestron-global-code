@@ -7,7 +7,7 @@ Write-Host "Starting Compiler Script"
 $SPlusCC = "C:\Program Files (x86)\Crestron\Simpl\SPlusCC.exe"
 
 # Loop through all .usp files in modules folder
-Get-ChildItem (Resolve-Path -Path ".\SIMPLPlusModules\").Path -Filter *.usp | 
+Get-ChildItem (Resolve-Path -Path ".\SIMPLPlusModules\").Path -Filter *Pearl.usp | 
 Foreach-Object {
     
     Write-Host "Processing Module `"$($_.Name)`""
