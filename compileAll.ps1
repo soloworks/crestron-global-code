@@ -24,7 +24,8 @@ Foreach-Object {
     Write-Host "Calling Compiler:"
     Write-Host "EXE: $($SPlusCC)"
     Write-Host "ARG: $($pinfo.Arguments)"
-    $p.Start() | Out-Null
+    $p.Start()# | Out-Null
+    Write-Host "Waiting for Exit"
     $p.WaitForExit()
     
     $stdout = $p.StandardOutput.ReadToEnd()
