@@ -17,6 +17,6 @@ jobs:
 
   steps:
   - task: PowerShell@2
-    displayName: 'Compiling Modules'
     inputs:
       filePath: '.\compileAll.ps1'
+    displayName: 'Compiling Modules'

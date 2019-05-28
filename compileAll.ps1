@@ -7,7 +7,7 @@ Write-Host "Starting Compiler Script"
 $SPlusCC = "C:\Program Files (x86)\Crestron\Simpl\SPlusCC.exe"
 
 # Loop through all .usp files in modules folder
-Get-ChildItem (Resolve-Path -Path ".\SIMPLPlusModules\").Path -Filter *Pearl.usp | 
+Get-ChildItem (Resolve-Path -Path ".\SIMPLPlusModules\").Path -Filter *.usp | 
 Foreach-Object {
     
     Write-Host "Processing Module `"$($_.Name)`""
@@ -21,14 +21,9 @@ Foreach-Object {
     $p = New-Object System.Diagnostics.Process
     $p.StartInfo = $pinfo
 
-    Write-Host "Compiling:"
-    Write-Host "EXE: $($SPlusCC)"
-    Write-Host "ARG: $($pinfo.Arguments)"
-    Write-Host "1..."
-    $p.Start()# | Out-Null
-    Write-Host "2..."
+    Write-Host "Compiling: $($SPlusCC) $($pinfo.Arguments)"
+    $p.Start()
     $p.WaitForExit()
-    Write-Host "3"
     
     $stdout = $p.StandardOutput.ReadToEnd()
     $stderr = $p.StandardError.ReadToEnd()
@@ -42,5 +37,6 @@ Foreach-Object {
         Write-Host "stderr: $stderr"
         Exit 1
     }
+    Write-Host ""
 }
 Exit 0
