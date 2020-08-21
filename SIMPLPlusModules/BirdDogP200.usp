@@ -150,22 +150,15 @@ Function Send(STRING cmd){
 		SEQ = 1; 
 	}
 
-	TRACE_HEX(cmd);
 	// Create actual Visca Packet
 	Visca = "\x81" + cmd + "\xFF";
-	TRACE_HEX(Visca);
 
-	// MAKESTRING(Tx,"\x01\x10\x00%x",2+LEN(command)); // Data Length
-	// MAKESTRING(Tx,"%s\x00\x00\x00%x",Tx,1); // Sequence
-	// MAKESTRING(Tx,"%s\x81%s\xFF",Tx,command); // Data
-	Tx = "\x01\x10";                // Visca Inquiry
-	Tx = Tx + "\x00"+chr(LEN(Visca)); // Data Length
-	Tx = Tx + "\x00\x00\x00"+chr(SEQ);
-	TX = Tx + Visca;
-	TRACE_HEX(Tx);
+	Tx = "\x01\x10";                   // Visca Inquiry
+	Tx = Tx + "\x00"+chr(LEN(Visca));  // Data Length
+	Tx = Tx + "\x00\x00\x00"+chr(SEQ); // Sequence
+	TX = Tx + Visca;                   // Command
 	SocketSend(ipCamera, Tx);  
 	PULSE(1,pollReset);
-
 }
  
 Function fnPoll(){ 
