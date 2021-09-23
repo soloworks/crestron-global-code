@@ -136,9 +136,10 @@ Function Send(STRING command){
 	IF(HOST_IP != ""){ 
 		MAKESTRING(Tx,"GET /cgi-bin/aw_ptz?cmd=%s&res=1 HTTP/1.1\x0D\x0A",command);
 		MAKESTRING(Tx,"%sHost: %s\x0D\x0A",Tx,HOST_IP);
+		MAKESTRING(Tx,"%sConnection: Close\x0D\x0A",Tx);
 		MAKESTRING(Tx,"%sAuthorization: Basic %s\x0D\x0A\x0D\x0A",Tx,AUTH_IP);
                     
-		//TRACE("Queue: %s",command);
+		// TRACE("Queue: %s",command);
 		SocketConnectClient(ipCamera, HOST_IP, 80, 0); 	
 	}
 	PULSE(1,pollReset);
@@ -146,12 +147,15 @@ Function Send(STRING command){
 }
  
 Function fnPoll(){ 
+	SIGNED_INTEGER error;
 	IF(HOST_IP != ""){ 
-		MAKESTRING(Tx,"GET /live/camdata.html HTTP/1.1\x0D\x0A");
+		MAKESTRING(Tx,"GET /live/camdata.html HTTP/1.1\x0D\x0A");	
 		MAKESTRING(Tx,"%sHost: %s\x0D\x0A",Tx,HOST_IP);
+		MAKESTRING(Tx,"%sConnection: Close\x0D\x0A",Tx);
 		MAKESTRING(Tx,"%sAuthorization: Basic %s\x0D\x0A\x0D\x0A",Tx,AUTH_IP);
-	//	TRACE("ipCamera Open Connection"); 
-		SocketConnectClient(ipCamera, HOST_IP, 80, 0);
+		// TRACE("ipCamera Poll: Open Connection"); 
+		error = SocketConnectClient(ipCamera, HOST_IP, 80, 0);
+		// TRACE("ipCamera Poll: Error %d",error);
 	}	
 	PULSE(1,pollReset);
 }
@@ -278,29 +282,34 @@ PUSH POLL{
 }
 
 SOCKETCONNECT ipCamera{ 
-	//TRACE("ipCamera Connected");                    
-	SocketSend(ipCamera, Tx);                    
+	// TRACE("ipCamera Connected"); 
+	// TRACE("Sending=%s",Tx);                   
+	SocketSend(ipCamera, Tx);   
+	WAIT(250, TimeOut){SocketDisconnectClient(ipCamera);}
+                 
 }
 
 SOCKETRECEIVE ipCamera{ 
-	//TRACE("ipCamera Recieve");
+	// TRACE("ipCamera Recieve");
+	// TRACE("%s",ipCamera.SocketRxBuf);
+
 }
  
 SOCKETDISCONNECT ipCamera{
 	STRING TEMP[100];
-	//TRACE("ipCamera DisConnected");
+	// TRACE("ipCamera DisConnected");
 	TEMP = REMOVE(" ",ipCamera.SocketRxBuf); // Strip HTTP/1.1
 	IF(REMOVE(" ",ipCamera.SocketRxBuf) = "200 "){
 		PULSE(1,connActive);
 	}
 	TEMP = REMOVE("\n\n",ipCamera.SocketRxBuf);	// Strip Headers                    
-	//TRACE("Body: %s",ipCamera.SocketRxBuf);
+	TRACE("Body: %s",ipCamera.SocketRxBuf);
 
 	CLEARBUFFER(ipCamera.SocketRxBuf);
 }
 
 SOCKETSTATUS ipCamera{
-	//TRACE("ipCamera Status: %d",ipCamera.SocketStatus);
+	// TRACE("ipCamera Status: %d",ipCamera.SocketStatus);
 } 
 
 /*******************************************************************************************
