@@ -192,7 +192,8 @@ Function fnGET(STRING path, STRING arg, STRING val){
 		MAKESTRING(Tx,"%s HTTP/1.1\n",Tx);
 		MAKESTRING(Tx,"%sHost: %s\n",Tx,HOST_IP);
 		MAKESTRING(Tx,"%sAuthorization: Basic %s\n\n",Tx,AUTH_IP);
-	
+		// TRACE("GET=%s",Tx);
+
 		fnTryConnection();
 	}
 }
@@ -214,14 +215,14 @@ Function fnPoll(){
 *******************************************************************************************/
 SOCKETCONNECT ipPearl{
 	STRING toSend[250];
-	//TRACE("ipPearl Connected");	
+	// TRACE("ipPearl Connected");	
 	toSend = REMOVE("\n\n",Tx);
     SOCKETSEND(ipPearl,toSend);
 	WAIT(250, TimeOut){SocketDisconnectClient(ipPearl);}
 }
 SOCKETDISCONNECT ipPearl{
 	STRING TEMP[100];
-	//TRACE("ipPearl DisConnected");
+	// TRACE("ipPearl DisConnected");
 	TEMP = REMOVE(" ",ipPearl.SocketRxBuf); // Strip HTTP/1.1
 	IF(REMOVE(" ",ipPearl.SocketRxBuf) = "200 "){
 		PULSE(1,connActive);
@@ -255,8 +256,8 @@ SOCKETDISCONNECT ipPearl{
 	fnTryConnection();
 }
 SOCKETRECEIVE ipPearl{
-	//TRACE("ipPearl Data Received");
-	//TRACE("%s",ipPearl.SocketRxBuf);
+	// TRACE("ipPearl Data Received");
+	// TRACE("%s",ipPearl.SocketRxBuf);
 }
 
 
