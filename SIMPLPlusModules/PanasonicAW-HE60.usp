@@ -277,27 +277,26 @@ RELEASE PresetSave{
 	Send(command);
 }
 
-PUSH POLL{                 
+PUSH POLL{  
+    SocketDisconnectClient(ipCamera);              
 	fnPoll();
 }
 
 SOCKETCONNECT ipCamera{ 
-	// TRACE("ipCamera Connected"); 
-	// TRACE("Sending=%s",Tx);                   
-	SocketSend(ipCamera, Tx);   
-	WAIT(250, TimeOut){SocketDisconnectClient(ipCamera);}
-                 
+	TRACE("ipCamera Connected"); 
+	TRACE("Sending=%s",Tx);                   
+	SocketSend(ipCamera, Tx);                    
 }
 
 SOCKETRECEIVE ipCamera{ 
-	// TRACE("ipCamera Recieve");
-	// TRACE("%s",ipCamera.SocketRxBuf);
-
+	TRACE("ipCamera Recieve");
+	TRACE("%s",ipCamera.SocketRxBuf);
+    SocketDisconnectClient(ipCamera);
 }
  
 SOCKETDISCONNECT ipCamera{
 	STRING TEMP[100];
-	// TRACE("ipCamera DisConnected");
+	TRACE("ipCamera DisConnected");
 	TEMP = REMOVE(" ",ipCamera.SocketRxBuf); // Strip HTTP/1.1
 	IF(REMOVE(" ",ipCamera.SocketRxBuf) = "200 "){
 		PULSE(1,connActive);
@@ -309,7 +308,7 @@ SOCKETDISCONNECT ipCamera{
 }
 
 SOCKETSTATUS ipCamera{
-	// TRACE("ipCamera Status: %d",ipCamera.SocketStatus);
+	TRACE("ipCamera Status: %d",ipCamera.SocketStatus);
 } 
 
 /*******************************************************************************************
