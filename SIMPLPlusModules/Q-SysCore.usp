@@ -172,14 +172,17 @@ SOCKETDISCONNECT ipQSys{
  
 SOCKETRECEIVE ipQSys{ 
 	TRACE("Q-Sys Recieved: %s",ipQSys.SocketRxBuf);
-  ClearBuffer(ipQSys.SocketRxBuf);
+  	ClearBuffer(ipQSys.SocketRxBuf);
 
 }
 
 CHANGE CMD{
 	STRING  Tx[100];
-	MAKESTRING(Tx,"%s\n",CMD);
-	SOCKETSEND(ipQSys,Tx);
+
+	IF (CMD != ""){	
+		MAKESTRING(Tx,"%s\n",CMD);
+		SOCKETSEND(ipQSys,Tx);
+	}
 }
 /*******************************************************************************************
   Main()
