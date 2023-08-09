@@ -70,7 +70,7 @@ DIGITAL_OUTPUT _SKIP_, Preset_FB[4];
   SOCKETS
   (Uncomment and define socket definitions as needed)
 *******************************************************************************************/
-TCP_CLIENT ipCamera[2000];
+TCP_CLIENT ipCamera[5000];
 // TCP_SERVER
 // UDP_SOCKET
 
@@ -123,7 +123,7 @@ MyStruct1 struct;
 // LONG_INTEGER
 // SIGNED_INTEGER
 // SIGNED_LONG_INTEGER
-STRING Tx[500];
+STRING Tx[1000];
 
 
 /*******************************************************************************************
@@ -133,14 +133,17 @@ STRING Tx[500];
          the code that calls them.
 *******************************************************************************************/
 Function Send(STRING command){
+	SIGNED_INTEGER error;
+
 	IF(HOST_IP != ""){ 
 		MAKESTRING(Tx,"GET /cgi-bin/aw_ptz?cmd=%s&res=1 HTTP/1.1\x0D\x0A",command);
 		MAKESTRING(Tx,"%sHost: %s\x0D\x0A",Tx,HOST_IP);
-		MAKESTRING(Tx,"%sConnection: Close\x0D\x0A",Tx);
-		MAKESTRING(Tx,"%sAuthorization: Basic %s\x0D\x0A\x0D\x0A",Tx,AUTH_IP);
-                    
-		// TRACE("Queue: %s",command);
-		SocketConnectClient(ipCamera, HOST_IP, 80, 0); 	
+		//MAKESTRING(Tx,"%sConnection: close\x0D\x0A",Tx);
+		MAKESTRING(Tx,"%s\x0D\x0A",Tx);                    
+		TRACE("QueueLen: %d",LEN(Tx));
+		error = SocketConnectClient(ipCamera, HOST_IP, 80, 0); 	
+		TRACE("ipCamera send: Error %d",error);
+
 	}
 	PULSE(1,pollReset);
 
@@ -151,11 +154,11 @@ Function fnPoll(){
 	IF(HOST_IP != ""){ 
 		MAKESTRING(Tx,"GET /live/camdata.html HTTP/1.1\x0D\x0A");	
 		MAKESTRING(Tx,"%sHost: %s\x0D\x0A",Tx,HOST_IP);
-		MAKESTRING(Tx,"%sConnection: Close\x0D\x0A",Tx);
-		MAKESTRING(Tx,"%sAuthorization: Basic %s\x0D\x0A\x0D\x0A",Tx,AUTH_IP);
-		// TRACE("ipCamera Poll: Open Connection"); 
+		//MAKESTRING(Tx,"%sConnection: close\x0D\x0A",Tx); 
+		MAKESTRING(Tx,"%s\x0D\x0A",Tx);                  
+		TRACE("QueueLen: %d",LEN(Tx));
 		error = SocketConnectClient(ipCamera, HOST_IP, 80, 0);
-		// TRACE("ipCamera Poll: Error %d",error);
+		TRACE("ipCamera Poll: Error %d",error);
 	}	
 	PULSE(1,pollReset);
 }
@@ -282,10 +285,12 @@ PUSH POLL{
 	fnPoll();
 }
 
-SOCKETCONNECT ipCamera{ 
+SOCKETCONNECT ipCamera{                    
+	SIGNED_INTEGER status;
 	TRACE("ipCamera Connected"); 
-	TRACE("Sending=%s",Tx);                   
-	SocketSend(ipCamera, Tx);                    
+	TRACE("Sending=%s",Tx); 
+	status = SocketSend(ipCamera, Tx);  
+	TRACE("SendStatus=%d",status) ;                
 }
 
 SOCKETRECEIVE ipCamera{ 
@@ -297,6 +302,7 @@ SOCKETRECEIVE ipCamera{
 SOCKETDISCONNECT ipCamera{
 	STRING TEMP[100];
 	TRACE("ipCamera DisConnected");
+	TRACE("ipCamera.SocketStatus.len=%d",LEN(ipCamera.SocketRxBuf));
 	TEMP = REMOVE(" ",ipCamera.SocketRxBuf); // Strip HTTP/1.1
 	IF(REMOVE(" ",ipCamera.SocketRxBuf) = "200 "){
 		PULSE(1,connActive);
